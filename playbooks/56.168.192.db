@@ -1,0 +1,14 @@
+$TTL 86400   
+@   IN  SOA     arq.emanuel.sarah.devops. root.emanuel.sarah.devops. (
+        2025082501    ;Serial
+        3600          ;Refresh
+        1800          ;Retry
+        604800        ;Expire
+        86400         ;Minimum TTL
+
+)
+@   	 IN     NS     arq.emanuel.sarah.devops.
+
+126      IN     PTR    arq.emanuel.sarah.devops.
+103      IN     PTR    db.emanuel.sarah.devops. 
+163      IN     PTR    app.emanuel.sarah.devops.

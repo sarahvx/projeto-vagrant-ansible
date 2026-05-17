@@ -1,0 +1,154 @@
+---
+# Playbook para configuração geral de todas as máquinas.
+- name: Configuração Geral de Todas as Máquinas.
+  hosts: all
+  become: yes  # Elevar privilégios para root.
+
+  # Variáveis do playbook:
+  vars:
+    grupo: ifpb                      # Grupo comum para todos os usuários.
+    usuarios:
+      - emanuel
+      - sarah                       # Lista de usuários a serem criados.
+    ntp_servers:
+      - pool.ntp.br                  # Servidores NTP a serem configurados.
+    ssh_banner: "Acesso apenas para pessoas com autorização expressa!!!"  # Banner SSH.
+
+  tasks: 
+    # Atualiza pacotes do sistema operacional e realiza upgrade.
+    - name: Atualizar o Sistema Operacional.
+      apt:
+        update_cache: yes
+        # upgrade: dist
+        cache_valid_time: 3600
+
+    # Instala o serviço de NTP (chrony).
+    - name: Instalação do chrony.
+      apt:
+        name: chrony
+        state: present
+
+    # Configura os servidores NTP no chrony.
+    - name: Configurar o servidor NTP.
+      lineinfile:
+        path: /etc/chrony/chrony.conf
+        regexp: '^pool '
+        line: 'pool {{ item }} iburst'
+        state: present
+      loop: "{{ ntp_servers }}"
+      notify: restart chrony  # Reinicia o serviço se houver alteração.
+
+    # Inicia o serviço chrony e habilita no boot.
+    - name: Rodar o chrony.
+      service:
+        name: chrony
+        state: started
+        enabled: yes
+
+    # Define o fuso horário da máquina.
+    - name: Configurar timezone America/Recife.
+      timezone:
+        name: America/Recife
+
+    # Cria o grupo "ifpb".
+    - name: Criar grupo ifpb.
+      group:
+        name: "{{ grupo }}"
+        state: present
+
+    # Cria os usuários definidos na lista, adicionando-os ao grupo "ifpb".
+    - name: Criar usuários no grupo ifpb.
+      user:
+        name: "{{ item }}"
+        groups: "{{ grupo }}"
+        append: yes
+        shell: /bin/bash
+        state: present
+      loop: "{{ usuarios }}"
+
+    # Cria o diretório .ssh para cada usuário.
+    - name: Criar diretório .ssh nos homes
+      file:
+        path: "/home/{{ item }}/.ssh"
+        state: directory
+        owner: "{{ item }}"
+        group: "{{ item }}"
+        mode: '0700'
+      loop: "{{ usuarios }}"
+
+    # Gera chaves SSH para cada usuário.
+    - name: Gerar chaves SSH para os usuários.
+      openssh_keypair:
+        path: "/home/{{ item }}/.ssh/id_rsa"
+        owner: "{{ item }}"
+        group: "{{ item }}"
+        mode: '0600'
+      loop: "{{ usuarios }}"
+
+    # Copia a chave pública para o authorized_keys.
+    - name: Copiar chave pública para authorized_keys
+      copy:
+        src: "/home/{{ item }}/.ssh/id_rsa.pub"
+        dest: "/home/{{ item }}/.ssh/authorized_keys"
+        remote_src: yes
+        owner: "{{ item }}"
+        group: "{{ item }}"
+        mode: '0600'
+      loop: "{{ usuarios }}"
+
+    # Cria banner de acesso SSH.
+    - name: Criar banner do SSH.
+      copy:
+        content: "{{ ssh_banner }}"
+        dest: /etc/issue.net
+
+    # Configura o SSH para usar o banner.
+    - name: Apontar SSH para usar banner
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?Banner'
+        line: 'Banner /etc/issue.net'
+        
+    # Ajustes de segurança do SSH: bloqueia root e permite só autenticação por chave.
+    - name: Configurar SSH - bloquear root, chaves apenas, grupos permitidos
+      blockinfile:
+        path: /etc/ssh/sshd_config
+        block: |
+          PermitRootLogin no
+          PasswordAuthentication no
+      notify: restart ssh
+
+    # Definição dos grupos permitidos no SSH.
+    - name: Definir grupos permitidos no SSH.
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^AllowGroups'
+        line: 'AllowGroups vagrant ifpb'
+      notify: restart ssh
+
+    # Instala cliente NFS.
+    - name: Instalar cliente NFS.
+      apt:
+        name: nfs-common
+        state: present
+
+    # Permite que o grupo ifpb use sudo.
+    - name: Permitir grupo ifpb usar sudo.
+      lineinfile:
+        path: /etc/sudoers
+        regexp: '^%{{ grupo }}'
+        line: '%{{ grupo }} ALL=(ALL:ALL) NOPASSWD: ALL'
+        validate: '/usr/sbin/visudo -cf %s'
+
+  # Handlers para reiniciar serviços quando necessário:
+  handlers:
+    - name: restart chrony
+      systemd:
+        name: chrony
+        state: restarted
+
+    - name: restart ssh
+      systemd:
+        name: ssh
+        state: restarted
+
