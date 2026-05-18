@@ -1,9 +1,4 @@
-===============================================================================
-                       PROJETO 01 - VAGRANT E ANSIBLE
-                    DISCIPLINA: ADMINISTRAÇÃO DE SISTEMAS ABERTOS
-                    PROFESSOR: LEONIDAS LIMA | PERÍODO: 2026.1
-         INSTITUTO FEDERAL DA PARAÍBA (IFPB) - CAMPUS JOÃO PESSOA
-===============================================================================
+PROJETO 01 - VAGRANT E ANSIBLE
 
 -------------------------------------------------------------------------------
 1. INTEGRANTES DA EQUIPE
