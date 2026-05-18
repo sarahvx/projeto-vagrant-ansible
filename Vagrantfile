@@ -26,7 +26,7 @@ Vagrant.configure("2") do |config|
 
   # Trigger para parar o servidor DHCP interno do VirtualBox antes de provisionar.
   config.trigger.before :"Vagrant::Action::Builtin::WaitForCommunicator", type: :action do |t|
-    t.warn = "Iterrompe o servidor dhcp do virtualbox"
+    t.warn = "Interrompe o servidor dhcp do virtualbox"
     t.run = {inline: "vboxmanage dhcpserver stop --interface vboxnet0"}
   end
 

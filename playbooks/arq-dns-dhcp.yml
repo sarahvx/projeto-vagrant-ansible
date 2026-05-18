@@ -98,34 +98,6 @@
         state: started
         enabled: yes
 
-    
-    # Criar diretório keys para armazenar as chaves na Máquina Real.
-    - name: Criar diretório local para armazenar chaves deste host
-      delegate_to: localhost
-      run_once: false
-      file:
-        path: "../keys/{{ inventory_hostname }}"
-        state: directory
-        mode: '0700'
-      become: no
-
-    # Copiar as chaves privadas para o diretório keys.
-    - name: Buscar chave privada dos usuários deste host para a máquina real
-      fetch:
-        src: "/home/{{ item }}/.ssh/id_rsa"
-        dest: "../keys/{{ inventory_hostname }}/{{ item }}_id_rsa"
-        flat: yes
-        mode: '0600'
-      loop: "{{ usuarios }}"
-      become: yes
-
-    # Atribuir permissão para a utilização das chaves privadas.
-    - name: Garantir permissão 600 nas chaves privadas baixadas
-      delegate_to: localhost
-      become: no
-      command: chmod 600 "../keys/{{ inventory_hostname }}/{{ item }}_id_rsa"
-      loop: "{{ usuarios }}"
-      ignore_errors: no
 
   # Handlers para reiniciar serviços quando notificados:
   handlers:

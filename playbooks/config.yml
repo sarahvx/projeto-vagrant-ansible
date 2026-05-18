@@ -66,6 +66,28 @@
         state: present
       loop: "{{ usuarios }}"
 
+    # Criar diretório local para armazenar as chaves
+    - name: Criar diretório keys
+      delegate_to: localhost
+      become: no
+      run_once: true
+      file:
+        path: "{{ playbook_dir }}/../keys"
+        state: directory
+        mode: '0700'
+
+    # Gerar chaves SSH para os usuários
+    - name: Gerar chaves SSH para os usuários
+      delegate_to: localhost
+      become: no
+      run_once: true
+      openssh_keypair:
+        path: "{{ playbook_dir }}/../keys/{{ item }}_id_rsa"
+        type: rsa
+        size: 2048
+        state: present
+      loop: "{{ usuarios }}"
+
     # Cria o diretório .ssh para cada usuário.
     - name: Criar diretório .ssh nos homes
       file:
@@ -76,24 +98,12 @@
         mode: '0700'
       loop: "{{ usuarios }}"
 
-    # Gera chaves SSH para cada usuário.
-    - name: Gerar chaves SSH para os usuários.
-      openssh_keypair:
-        path: "/home/{{ item }}/.ssh/id_rsa"
-        owner: "{{ item }}"
-        group: "{{ item }}"
-        mode: '0600'
-      loop: "{{ usuarios }}"
-
-    # Copia a chave pública para o authorized_keys.
-    - name: Copiar chave pública para authorized_keys
-      copy:
-        src: "/home/{{ item }}/.ssh/id_rsa.pub"
-        dest: "/home/{{ item }}/.ssh/authorized_keys"
-        remote_src: yes
-        owner: "{{ item }}"
-        group: "{{ item }}"
-        mode: '0600'
+    # Autorizar as chaves públicas
+    - name: Autorizar as chaves públicas
+      authorized_key:
+        user: "{{ item }}"
+        state: present
+        key: "{{ lookup('file', playbook_dir + '/../keys/' + item + '_id_rsa.pub') }}"
       loop: "{{ usuarios }}"
 
     # Cria banner de acesso SSH.
